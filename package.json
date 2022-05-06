@@ -1,0 +1,14 @@
+{
+  "name": "storage-api",
+  "version": "0.1.0",
+  "description": "Provides a REST API for storing TachyonCMS JSON objects",
+  "main": "index.js",
+  "repository": "git@github.com:TachyonCMS/storage-api.git",
+  "author": "Brian Winkers <bwinkers@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "fastify": "^3.29.0",
+    "nanoid": "^3.3.4"
+  }
+}
