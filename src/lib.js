@@ -99,7 +99,7 @@ const readJson = async (dirs = [], fileName) => {
 
       fs.readFile(fullPath, "utf8", (err, fileData) => {
         if (err) {
-          console.log("err - rejecting with failure");
+          console.log("readJson error");
           console.error(err);
           reject({ status: "failure" });
         } else {
@@ -143,6 +143,18 @@ const getDirs = async (startDir) => {
   return dirs;
 };
 
+const deleteDir = async (dirs = []) => {
+  try {
+    const dirPath = dirs.join(osSep);
+    fs.rm(dirPath, { recursive: true }).then(() => {
+      return { status: "success", deleted: dirPath };
+    });
+  } catch (e) {
+    console.log(e);
+    return { status: "failure" };
+  }
+};
+
 // Get all the flows found in the designated directory
 const getAllFlows = async () => {
   // If we find any flows on disk we'll merge them this array
@@ -178,23 +190,27 @@ const createFlow = async (flow) => {
 
 // Delete a Flow
 // Deletes entire Flow directory, Nuggets are not deleted as hey may be shared.
-// A script will delete unlinked nuggets asyncronously and out of band.
-const createFlow = async (flow) => {
-  addId(flow);
-  initTimestamps(flow);
+// A script will delete unlinked nuggets async and out of band.
+const deleteFlow = async (flowId) => {
+  const targetDirs = [contentDataRoot, "flows", flowId];
+  return deleteDir(targetDirs);
+};
 
-  const jsonString = JSON.stringify(flow, null, 2);
-  const flowDir = contentDataRoot + "/flows/" + flow.id;
-
+// Get a single Flow with its associated data
+const getFlowData = async (flowId, dataType) => {
   try {
-    await fs.ensureDir(flowDir);
+    // Define valid types to scrub input
+    const validDataType = ["flow", "nuggetSeq"];
+    // Only load known types
+    if (validDataType.includes(dataType)) {
+      const flowDirs = [contentDataRoot, "flows", flowId];
+      flow = await readJson(flowDirs, dataType);
+      return flow;
+    }
   } catch (e) {
-    console.log("Failed to create Flow directory: " + flowDir);
+    console.error(e);
+    throw new Error("Invalid Request for " + flowId);
   }
-
-  await fs.writeFile(flowDir + "/flow.json", jsonString);
-
-  return flow;
 };
 
 // Merge an update into a well named object file
@@ -249,4 +265,4 @@ exports.getAllFlows = getAllFlows;
 exports.createFlow = createFlow;
 exports.mergeUpdate = mergeUpdate;
 exports.deleteFlow = deleteFlow;
-exports.getFlow = getFlow;
+exports.getFlowData = getFlowData;

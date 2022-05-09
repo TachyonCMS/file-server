@@ -7,7 +7,7 @@ const {
   createFlow,
   mergeUpdate,
   deleteFlow,
-  getFlow,
+  getFlowData,
 } = require("./lib");
 
 /**
@@ -80,12 +80,29 @@ router.delete(
       const flowId = req.params.flowId;
       console.log("DELETE - Delete Flow: " + flowId);
       await deleteFlow(flowId);
-      await fs.remove(contentDataRoot + "/flows/" + flowId);
-      const flowResult = await mergeUpdate("flow", flowId, partialData);
       res.json({ deleted: flowId });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
+    }
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+// Get a Flow by ID
+router.get(
+  "/flows/:flowId",
+  async (req, res) => {
+    try {
+      const flowId = req.params.flowId;
+      console.log("GET - Get Flow: " + flowId);
+      const flow = await getFlowData(flowId, "flow");
+      res.json(flow.data);
+    } catch (e) {
+      console.error(e);
+      res.status(404).send({ error: "Not Found" });
     }
   },
   (error, req, res, next) => {
