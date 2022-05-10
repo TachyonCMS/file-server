@@ -3,19 +3,13 @@ const fs = require("fs-extra");
 const { nanoid } = require("nanoid");
 
 const contentDataRootIx = process.argv.indexOf("--contentDataRoot");
-let contentDataRoot = "/home/brian/sandbox/content/TachyonCMS";
-/*
+let contentDataRoot;
+
 if (contentDataRootIx > -1) {
   const contentDataRootIn = process.argv[contentDataRootIx + 1];
   contentDataRoot = path.resolve(contentDataRootIn);
 }
 console.debug("Managing content in " + contentDataRoot);
-*/
-// The parent directory that we expect to find Flows defined in sub-directories.
-//const flowsDir = path.resolve(contentDataRoot, "flows");
-
-// The parent directory that we expect to find Nuggets defined in sub-directories.
-//const nuggetsDir = path.resolve(contentDataRoot, "nuggets");
 
 // OS specific path separator
 const osSep = path.sep;
