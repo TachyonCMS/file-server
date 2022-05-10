@@ -12,13 +12,16 @@ if (contentDataRootIx > -1) {
 console.debug("Managing content in " + contentDataRoot);
 */
 // The parent directory that we expect to find Flows defined in sub-directories.
-const flowsDir = path.resolve(contentDataRoot + "/flows/");
+//const flowsDir = path.resolve(contentDataRoot, "flows");
 
 // The parent directory that we expect to find Nuggets defined in sub-directories.
-const nuggetsDir = path.resolve(contentDataRoot + "/nuggets/");
+//const nuggetsDir = path.resolve(contentDataRoot, "nuggets");
 
 // OS specific path separator
 const osSep = path.sep;
+
+// Map object types to directory names
+const objDirs = { nugget: "nuggets", flow: "flows" };
 
 // Consistent "now" datetime
 const getNow = () => {
@@ -46,30 +49,21 @@ const addId = (data) => {
   return data;
 };
 
-const getJsonMulti = async (type, idArray) => {
+const getJsonMulti = async (dirSegmentsArray) => {
   const objects = [];
 
   await Promise.all(
-    idArray.map(async (objectId) => {
-      console.log(objectId);
+    dirSegmentsArray.map(async (dirSegments) => {
       let readResult = {};
-      switch (type) {
-        case "nugget":
-          readResult = await readJson(
-            [contentDataRoot, "nuggets", objectId],
-            "nugget"
-          );
-          break;
-        case "flow":
-          readResult = await readJson(
-            [contentDataRoot, "flows", objectId],
-            "flow"
-          );
-          break;
-      }
 
-      if (readResult.status === "success") {
-        objects.push(readResult.data);
+      try {
+        readResult = await readJson(dirSegments);
+
+        if (readResult.status === "success") {
+          objects.push(readResult.data);
+        }
+      } catch (e) {
+        console.error(e);
       }
     })
   );
@@ -90,16 +84,18 @@ const ensureSubDir = async (contentDataRoot, subDir) => {
   }
 };
 
-const readJson = async (dirs = [], fileName) => {
+const readJson = async (pathSegments = []) => {
   return new Promise((resolve, reject) => {
     try {
-      const dirPath = dirs.join(osSep);
-      const fullPath = dirPath.replace(/\/+$/, "") + osSep + fileName + ".json";
-      console.log("fetching file data for: " + fullPath);
+      // Sandbox all file calls to the contentDataRoot
+      pathSegments.unshift(contentDataRoot);
+
+      const dirPath = path.resolve(...pathSegments);
+
+      const fullPath = dirPath + ".json";
 
       fs.readFile(fullPath, "utf8", (err, fileData) => {
         if (err) {
-          console.log("readJson error");
           console.error(err);
           reject({ status: "failure" });
         } else {
@@ -115,17 +111,26 @@ const readJson = async (dirs = [], fileName) => {
 };
 
 // Write a JSON file, all logic should have been applied before this.
-const writeJson = async (dirs = [], fileName, fileData) => {
+const writeJson = async (pathSegments = [], fileData) => {
   return new Promise((resolve, reject) => {
     try {
-      const dirPath = dirs.join(osSep);
-      const fullPath = dirPath.replace(/\/+$/, "") + osSep + fileName + ".json";
+      pathSegments.unshift(contentDataRoot);
+
+      // The last segment is the file name, the remainder are directories
+      const pathDirs = pathSegments.slice(0, pathSegments.length - 1);
+      const segmentsPath = path.resolve(...pathSegments);
+
+      const fullPath = segmentsPath + ".json";
+
       console.log("writing to: " + fullPath);
 
       const jsonString = JSON.stringify(fileData, null, 2);
 
-      fs.writeFile(fullPath, jsonString);
-      resolve({ status: "success", data: fileData });
+      fs.mkdir(path.resolve(...pathDirs), { recursive: true }).then(() => {
+        fs.writeFile(fullPath, jsonString).then(() => {
+          resolve({ status: "success", data: fileData });
+        });
+      });
     } catch (e) {
       console.error(e);
       reject({ status: "failure" });
@@ -133,9 +138,15 @@ const writeJson = async (dirs = [], fileName, fileData) => {
   });
 };
 
-const getDirs = async (startDir) => {
+const getDirsIn = async (dirSegments) => {
+  // Sandbox all file calls to the contentDataRoot
+  dirSegments.unshift(contentDataRoot);
+
+  // Resolve the fullPath
+  const dirPath = path.resolve(...dirSegments);
+
   // All filesystem entries in that directory
-  const dirEntries = await fs.readdir(startDir, { withFileTypes: true });
+  const dirEntries = await fs.readdir(dirPath, { withFileTypes: true });
 
   // Filter out the directories.
   const dirs = dirEntries.filter((de) => de.isDirectory()).map((de) => de.name);
@@ -160,9 +171,18 @@ const getAllFlows = async () => {
   // If we find any flows on disk we'll merge them this array
   const defaultFlows = [];
 
-  const dirs = await getDirs(flowsDir);
+  // Get an array of directories within the flows directory
+  const flowDirs = await getDirsIn(["flows"]);
 
-  const fileFlows = await getJsonMulti("flow", dirs);
+  console.log(flowDirs);
+  const flowFilePaths = [];
+
+  flowDirs.map((dirName) => {
+    const pathSegments = ["flows", dirName, "flow"];
+    flowFilePaths.push(pathSegments);
+  });
+
+  const fileFlows = await getJsonMulti(flowFilePaths);
 
   const flows = [...defaultFlows, ...fileFlows];
 
@@ -171,21 +191,16 @@ const getAllFlows = async () => {
 
 // Create a new Flow
 const createFlow = async (flow) => {
-  addId(flow);
-  initTimestamps(flow);
-
-  const jsonString = JSON.stringify(flow, null, 2);
-  const flowDir = contentDataRoot + "/flows/" + flow.id;
-
   try {
-    await fs.ensureDir(flowDir);
+    addId(flow);
+    initTimestamps(flow);
+
+    const pathSegments = ["flows", flow.id, "flow"];
+    await writeJson(pathSegments, flow);
+    return flow;
   } catch (e) {
-    console.log("Failed to create Flow directory: " + flowDir);
+    console.log("Failed to create Flow");
   }
-
-  await fs.writeFile(flowDir + "/flow.json", jsonString);
-
-  return flow;
 };
 
 // Delete a Flow
@@ -203,8 +218,8 @@ const getFlowData = async (flowId, dataType) => {
     const validDataType = ["flow", "nuggetSeq"];
     // Only load known types
     if (validDataType.includes(dataType)) {
-      const flowDirs = [contentDataRoot, "flows", flowId];
-      flow = await readJson(flowDirs, dataType);
+      const pathSegments = ["flows", flowId, dataType];
+      flow = await readJson(pathSegments);
       return flow;
     }
   } catch (e) {
@@ -222,34 +237,82 @@ const mergeUpdate = async (objType, objId, partialData) => {
   setUpdatedAt(partialData);
 
   // All data requests are sandboxed to the root
-  let targetDirs = [contentDataRoot];
-  let targetFile;
-
-  // Type specific logic for path and file name
-  switch (objType) {
-    case "flow":
-      targetDirs.push("flows", objId);
-      targetFile = "flow";
-      break;
-
-    case "nugget":
-      targetDirs.push("nuggets", objId);
-      targetFile = "nugget";
-      break;
-  }
+  const pathSegments = [contentDataRoot, objDirs[objType], objId, objType];
 
   try {
     // Fetch current data
-    const currentData = await readJson(targetDirs, targetFile);
+    const currentData = await readJson(pathSegments);
     // Merge old and new data
     const mergedData = { ...currentData.data, ...partialData };
     // Write the JSON file
-    await writeJson(targetDirs, targetFile, mergedData);
+    await writeJson(pathSegments, mergedData);
     return mergedData;
   } catch (e) {
     console.error(e);
     throw new Error(e);
   }
+};
+
+// Create a new Nugget
+const createNugget = async (data, flowIds = null) => {
+  try {
+    addId(data);
+    initTimestamps(data);
+    const pathSegments = ["nuggets", data.id, "nugget"];
+    await writeJson(pathSegments, data);
+    if (flowIds) {
+      // Get a shared linkedAt datetime
+      const nowStr = getNow();
+      const linkedAt = { linkedAt: nowStr };
+
+      // Add link in nugget to flow
+      // Add link in flow to nugget
+    }
+    return data;
+  } catch (e) {
+    console.log("Failed to create Nugget");
+    throw new Error("Unable to create Nugget " + data.id);
+  }
+};
+
+// Delete a Nugget
+// Deletes entire Nugget directory, Nuggets are not deleted as hey may be shared.
+// A script will delete unlinked nuggets async and out of band.
+const deleteNugget = async (nuggetId) => {
+  const targetDirs = [contentDataRoot, "nuggets", nuggetId];
+  return deleteDir(targetDirs);
+};
+
+// Create two-way reference links between two objects
+const twoWayLink = async (objType1, objId1, objType2, objId2) => {
+  // Add link in obj1/type2 to id2
+  await objLink(objType1, objId1, objType2, objId2);
+  // Add link in obj2/type1 to id1
+  await objLink(objType2, objId2, objType1, objId1);
+};
+
+// Create one direction link between two objects
+const objLink = async (fromObjType, fromObjId, toObjType, toObjId) => {
+  // Get a shared linkedAt datetime
+  const nowStr = getNow();
+
+  // Define the JSON object to be stored
+  const storedObj = { linkedAt: nowStr };
+
+  // Lookup the directory names used by the objects
+  const fromDir = objDirs[fromObjType];
+  const toDir = objDirs[toObjType];
+
+  // Define the path to write the file.
+  // The link is a property of the "from" object.
+  // Therefore, the data gets stored in the "from" object type and id directory.
+  // In a subdirectory based on  the "to" type.
+  const writeDirs = [contentDataRoot, fromDir, fromObjId, toDir];
+
+  // Use the linked object ID as the file name.
+  // A directory scan will then provide a list of all linked ID.
+  // The index files themselves don't need to be fetched in  most instances.
+  const fileName = toObjId;
 };
 
 //exports.osSep = osSep;
@@ -266,3 +329,5 @@ exports.createFlow = createFlow;
 exports.mergeUpdate = mergeUpdate;
 exports.deleteFlow = deleteFlow;
 exports.getFlowData = getFlowData;
+exports.createNugget = createNugget;
+exports.deleteNugget = deleteNugget;

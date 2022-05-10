@@ -8,6 +8,8 @@ const {
   mergeUpdate,
   deleteFlow,
   getFlowData,
+  createNugget,
+  deleteNugget,
 } = require("./lib");
 
 /**
@@ -23,10 +25,10 @@ router.get(
       console.log("GET - All Flows");
       const flows = await getAllFlows();
       res.setHeader("Content-Type", "application/json");
-      res.json({ flows: flows });
+      res.json({ data: { flows: flows } });
     } catch (e) {
       console.error(e);
-      throw new Error("Unable to process request");
+      res.status(500).send({ error: "Failed to load flows" });
     }
   },
   (error, req, res, next) => {
@@ -42,7 +44,7 @@ router.post(
       console.log("POST - Create Flow");
       const flowData = req.body;
       const flowResult = await createFlow(flowData);
-      res.json(flowResult);
+      res.json({ data: { flow: flowResult } });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -61,7 +63,7 @@ router.post(
       const flowId = req.params.flowId;
       const partialData = req.body;
       const flowResult = await mergeUpdate("flow", flowId, partialData);
-      res.json(flowResult);
+      res.json({ data: { flow: flowResult } });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -80,7 +82,7 @@ router.delete(
       const flowId = req.params.flowId;
       console.log("DELETE - Delete Flow: " + flowId);
       await deleteFlow(flowId);
-      res.json({ deleted: flowId });
+      res.json({ data: { deleted: flowId } });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -99,10 +101,67 @@ router.get(
       const flowId = req.params.flowId;
       console.log("GET - Get Flow: " + flowId);
       const flow = await getFlowData(flowId, "flow");
-      res.json(flow.data);
+      res.json({ data: { flow: flow.data } });
     } catch (e) {
       console.error(e);
       res.status(404).send({ error: "Not Found" });
+    }
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+// Create a new Nugget
+router.post(
+  "/nuggets",
+  async (req, res) => {
+    try {
+      console.log("POST - Create Nugget");
+      const data = req.body;
+      const result = await createNugget(data);
+      res.json({ data: { nugget: result } });
+    } catch (e) {
+      console.error(e);
+      throw new Error("Unable to process request");
+    }
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+// Update an existing Nugget, merge the existing data into the existing object.
+router.post(
+  "/nuggets/:nuggetId",
+  async (req, res) => {
+    try {
+      const nuggetId = req.params.nuggetId;
+      const partialData = req.body;
+      const result = await mergeUpdate("nugget", nuggetId, partialData);
+      res.json({ data: { nugget: result } });
+    } catch (e) {
+      console.error(e);
+      throw new Error("Unable to process request");
+    }
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+// Delete a Nugget by ID
+router.delete(
+  "/nuggets/:nuggetId",
+  async (req, res) => {
+    try {
+      const nuggetId = req.params.nuggetId;
+      console.log("DELETE - Delete Nugget: " + nuggetId);
+      await deleteNugget(nuggetId);
+      res.json({ data: { deleted: nuggetId } });
+    } catch (e) {
+      console.error(e);
+      throw new Error("Unable to process request");
     }
   },
   (error, req, res, next) => {
