@@ -14,7 +14,7 @@ console.debug("Managing content in " + contentDataRoot);
 // OS specific path separator
 const osSep = path.sep;
 
-// Map object types to directory names
+// Map object types to directory names for lookups
 const objDirs = { nugget: "nuggets", flow: "flows" };
 
 // Consistent "now" datetime
@@ -64,7 +64,7 @@ const getJsonMulti = async (dirSegmentsArray) => {
 
   return objects;
 };
-
+/**
 const ensureSubDir = async (contentDataRoot, subDir) => {
   const fullPath = contentDataRoot + osSep + subDir;
   try {
@@ -77,7 +77,7 @@ const ensureSubDir = async (contentDataRoot, subDir) => {
     return { error: "failed to create " + fullPath };
   }
 };
-
+ */
 const readJson = async (pathSegments = []) => {
   return new Promise((resolve, reject) => {
     try {
