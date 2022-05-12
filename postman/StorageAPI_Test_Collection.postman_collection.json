@@ -6,6 +6,39 @@
 	},
 	"item": [
 		{
+			"name": "Auth Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Count the number of Flows",
+							"pm.test(\"Auth OK\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.auth).to.eq('admin')",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{server_url}}/auth/check",
+					"host": [
+						"{{server_url}}"
+					],
+					"path": [
+						"auth",
+						"check"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get All Flows",
 			"event": [
 				{
@@ -15,7 +48,7 @@
 							"// Count the number of Flows",
 							"pm.test(\"Flow Count\", function () {",
 							"    var jsonData = pm.response.json();",
-							"    const flowCount = jsonData.data.flows.length;",
+							"    const flowCount = jsonData.flows.length;",
 							"    console.log('Found ' + flowCount +' flows')",
 							"    pm.environment.set(\"originalFlowCount\", flowCount);",
 							"    pm.environment.set(\"currentFlowCount\", flowCount);",
@@ -61,7 +94,7 @@
 							"const uniqFlow = pm.environment.get(\"uniqFlow\");",
 							"",
 							"var jsonData = pm.response.json();",
-							"var flow = jsonData.data.flow",
+							"var flow = jsonData.flow",
 							"",
 							"pm.test(\"Flow was assigned an ID\", function () {",
 							"    pm.expect(flow.id).to.exist;",
@@ -124,7 +157,7 @@
 							"const uniqFlow = pm.environment.get(\"uniqFlow\");",
 							"",
 							"var jsonData = pm.response.json();",
-							"var flows = jsonData.data.flows",
+							"var flows = jsonData.flows",
 							"",
 							"// Count the number of Flows",
 							"pm.test(\"Flow Count is correct\", function () {",
@@ -244,15 +277,6 @@
 			"name": "Create a new Nugget",
 			"event": [
 				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
-							"pm.environment.set(\"uniqNug1\", pm.variables.replaceIn('{{$guid}}'));"
-						],
-						"type": "text/javascript"
-					}
-				},
-				{
 					"listen": "test",
 					"script": {
 						"exec": [
@@ -261,7 +285,7 @@
 							"const uniqNug1 = pm.environment.get(\"uniqNug1\");",
 							"",
 							"var jsonData = pm.response.json();",
-							"var nugget = jsonData.data.nugget",
+							"var nugget = jsonData.nugget",
 							"",
 							"pm.test(\"Nugget was assigned an ID\", function () {",
 							"    pm.expect(nugget.id).to.exist;",
@@ -283,6 +307,15 @@
 							"pm.test(\"updatedAt is null string\", function () {",
 							"    pm.expect(nugget.updatedAt).to.eq(\"\")",
 							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"uniqNug1\", pm.variables.replaceIn('{{$guid}}'));"
 						],
 						"type": "text/javascript"
 					}
@@ -410,12 +443,12 @@
 		"basic": [
 			{
 				"key": "password",
-				"value": "OpenSourceBike",
+				"value": "TachyonCMS",
 				"type": "string"
 			},
 			{
 				"key": "username",
-				"value": "TachyonCMS",
+				"value": "admin",
 				"type": "string"
 			}
 		]

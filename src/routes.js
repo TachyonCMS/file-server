@@ -16,6 +16,24 @@ const {
  * ROUTER DEFINITION
  */
 
+// Auth Check
+router.get(
+  "/auth/check",
+  async (req, res) => {
+    try {
+      console.log("GET - Auth Status");
+      res.setHeader("Content-Type", "application/json");
+      res.json({ auth: req.auth.user });
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ error: "Failed to load Auth Check" });
+    }
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
 // Get a list of flows
 // Returns an array of objects, much as a DynamoDB call would.
 router.get(
@@ -25,7 +43,7 @@ router.get(
       console.log("GET - All Flows");
       const flows = await getAllFlows();
       res.setHeader("Content-Type", "application/json");
-      res.json({ data: { flows: flows } });
+      res.json({ flows: flows });
     } catch (e) {
       console.error(e);
       res.status(500).send({ error: "Failed to load flows" });
@@ -44,7 +62,7 @@ router.post(
       console.log("POST - Create Flow");
       const flowData = req.body;
       const flowResult = await createFlow(flowData);
-      res.json({ data: { flow: flowResult } });
+      res.json({ flow: flowResult });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -63,7 +81,7 @@ router.post(
       const flowId = req.params.flowId;
       const partialData = req.body;
       const flowResult = await mergeUpdate("flow", flowId, partialData);
-      res.json({ data: { flow: flowResult } });
+      res.json({ flow: flowResult });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -82,7 +100,7 @@ router.delete(
       const flowId = req.params.flowId;
       console.log("DELETE - Delete Flow: " + flowId);
       await deleteFlow(flowId);
-      res.json({ data: { deleted: flowId } });
+      res.json({ deleted: flowId });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -101,7 +119,7 @@ router.get(
       const flowId = req.params.flowId;
       console.log("GET - Get Flow: " + flowId);
       const flow = await getFlowData(flowId, "flow");
-      res.json({ data: { flow: flow.data } });
+      res.json({ flow: flow.data });
     } catch (e) {
       console.error(e);
       res.status(404).send({ error: "Not Found" });
@@ -120,7 +138,7 @@ router.post(
       console.log("POST - Create Nugget");
       const data = req.body;
       const result = await createNugget(data);
-      res.json({ data: { nugget: result } });
+      res.json({ nugget: result });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -139,7 +157,7 @@ router.post(
       const nuggetId = req.params.nuggetId;
       const partialData = req.body;
       const result = await mergeUpdate("nugget", nuggetId, partialData);
-      res.json({ data: { nugget: result } });
+      res.json({ nugget: result });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
@@ -158,7 +176,7 @@ router.delete(
       const nuggetId = req.params.nuggetId;
       console.log("DELETE - Delete Nugget: " + nuggetId);
       await deleteNugget(nuggetId);
-      res.json({ data: { deleted: nuggetId } });
+      res.json({ deleted: nuggetId });
     } catch (e) {
       console.error(e);
       throw new Error("Unable to process request");
